@@ -6,19 +6,38 @@
 @license GNU GPL 3.0
 """
 class ContourStorage:
-    _contours = {};
-    _current  = {};
+    _bufferSize   = 25; # how many frames are stored.
+    _contourBuffer = [];
+    _contours = {}; # holds the last values for active ids'
+    _flushed  = {}; # hold id's that have been flushed
+    _current  = {}; # current colleciton of contours added
     _new      = None;
     _size     = None;
     _totalPix = None;
 
     def getContours( self ):
-        self._contours.update( self._current );
+        toRemove = {};
+        # add the _current to the contourbufer
+        self._contourBuffer.append( self._current );
 
-        contours = dict( self._current );
+        # remove the first (oldest) contour collection from buffer
+        if len( self._contourBuffer ) > self._bufferSize:
+            self._flushed = self._contourBuffer.pop(0);
+
+        # clean the aggregate container
+        self._contours = {};
+
+        # self._contours hold all the contours, but only their last values
+        for contour in self._contourBuffer:
+            self._contours.update( contour ); # last in, overwrites previous
+
+        contours = dict( self._current ); # copy
         self._current = {};
 
         return contours;
+
+    def getFlushedContours( self ):
+        return self._flushed;
 
     """ add a new contour to the current list. recycle ids """
     def add( self, size, center, values ):

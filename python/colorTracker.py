@@ -86,7 +86,7 @@ class ColorTracker:
             255, self.setValueThreshold );
         cv.CreateTrackbar('Blur', 'Preview', self._blurFact,
             255, self.setBlur );
-        cv.CreateTrackbar('Min-size', 'Preview', self._minContourArea*10,
+        cv.CreateTrackbar('Min-size', 'Preview', int(self._minContourArea*10),
             1000, self.setMinContourArea );
 
 
@@ -185,8 +185,8 @@ class ColorTracker:
                 cv.Set( self._imgContours, [0, 0, 255] );
 
                 blur = max(1, self._blurFact ); # cannot be 0
-
                 cv.Smooth( self._imageHSV, self._imageHSV, cv.CV_BLUR, blur, blur);
+
                 cv.InRangeS( self._imageHSV, [0, self._satMin, self._valMin], [181, 256, 256], self._mask );
 
                 # apply the mask over the input HSV to filter out black
@@ -201,8 +201,18 @@ class ColorTracker:
                 else:
                     print "W: framedrop ", abs(t);
 
-                self.showImage();
                 # print self.contourStorage.getContours();
+                font = cv.InitFont(cv.CV_FONT_HERSHEY_PLAIN, 1, 1, 0, 1, 8);
+                contours = self.contourStorage.getContours();
+
+
+                for key in contours:
+                    str = "C%d" % key;
+                    cv.PutText( self._imageRGB, str, contours[key][0], font, cv.CV_RGB(255, 0, 0));
+
+                #    print key;
+
+                self.showImage();
                 self._hasFrame = False;
 
     def findContours( self ):
@@ -286,6 +296,10 @@ class ColorTracker:
             cv.ShowImage( "Preview", self._imgContours );
         elif self._mode == 109 or self._mode == 1048685:#m
             cv.ShowImage( "Preview", self._mask );
+        elif self._mode == 115:
+            cv.ShowImage( "Preview", self._imageHSV );
+        elif self._mode == 114:
+            cv.ShowImage( "Preview", self._rawFrame );
         else:
             cv.ShowImage( "Preview", self._imageRGB );
 
