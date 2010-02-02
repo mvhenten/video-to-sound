@@ -2,12 +2,10 @@
 """
 @title A color-segmented contour tracker
 """
-import sys, types, time, operator, thread;
-
+import sys, types, thread;
 sys.path.append('./lib');
 
 from cv import *
-from contourStorage import *
 from ColorTracker import *
 
 MOUSE_MOVE  = 0;
@@ -17,8 +15,6 @@ MOUSE_UP    = 4;
 MOVIE_PATH  = None;
 SC_PORT     = 5720;
 LIVE_FEED   = False;
-
-p = NamedWindow( 'paling' );
 
 print "Simple HSV color-contour tracker. Press <ESC> to quit";
 
@@ -49,14 +45,17 @@ if not LIVE_FEED:
 
 
 if __name__=="__main__":
-    main = ColorTracker()
+    main = ColorTracker( LIVE_FEED, MOVIE_PATH )
     #main.run()
 
-    thread.start_new_thread(main.frameGrabber, ())
-    thread.start_new_thread(main.contourTracker, ())
+    try:
+        thread.start_new_thread(main.frameGrabber, ())
+        thread.start_new_thread(main.contourTracker, ())
+    except Exception, errtxt:
+        print errtxt
 
     while True:
-        c = cv.WaitKey(10);
+        c = WaitKey(10);
 
         if c == 27 or c == 1048603:
             exit(0);

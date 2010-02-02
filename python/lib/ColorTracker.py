@@ -13,6 +13,9 @@ A color tracker using OpenCV
 """
 from cv import *;
 from ContourStorage import *;
+from SCClient import *;
+
+import time, operator;
 
 class ColorTracker:
     """ color segmented contour tracker """
@@ -39,9 +42,10 @@ class ColorTracker:
     _blurFact   = 11;
     _minContourArea = 0.8;
 
-    contourStorage = None;
+    _contourStorage = None;
+    _client         = None;
 
-    def __init__( self, imageSize = (352, 288) ):
+    def __init__( self, useLiveFeed = False, moviePath = '', imageSize = (352, 288) ):
         # window and trackbar
         NamedWindow( "Preview", 1 );
         CreateTrackbar('Sat', 'Preview', self._satMin,
@@ -74,12 +78,12 @@ class ColorTracker:
         self._histHue = CreateHist([self._histBins], CV_HIST_SPARSE, [[0, 180]]);
         self._memStorage = CreateMemStorage();
 
-        self.contourStorage = ContourStorage();
-        self.contourStorage.setSize( self._imageSize );
+        self._contourStorage = ContourStorage( self._imageSize );
+        self._client         = SCClient();
 
-        if not LIVE_FEED:
+        if not useLiveFeed:
             # @todo try to set capture properties here. won't really do.
-            self._capture = CaptureFromFile( MOVIE_PATH );
+            self._capture = CaptureFromFile( moviePath );
         else:
             self._capture = CaptureFromCAM(0);
 
@@ -132,7 +136,7 @@ class ColorTracker:
 
     """ Mouse callback. Show info about clicked pixel """
     def onMouse( self, event, mouseX, mouseY, flags, param ):
-        if( event == MOUSE_DOWN ):
+        if( event == 1 ): #mousedown
             pix = self._imageTmp[mouseY, mouseX];
             print "I: MASK: X, Y >> H, S, V:", [mouseX, mouseY], pix;
             pix = self._imageHSV[mouseY, mouseX];
@@ -165,16 +169,22 @@ class ColorTracker:
                 else:
                     print "W: framedrop ", abs(t);
 
-                # print self.contourStorage.getContours();
-                font = InitFont(CV_FONT_HERSHEY_PLAIN, 1, 1, 0, 1, 8);
-                contours = self.contourStorage.getContours();
+                font    = InitFont(CV_FONT_HERSHEY_PLAIN, 1, 1, 0, 1, 8);
+
+                for id, c in self._contourStorage._current.iteritems():
+                    (x, y), (width, height) = c[0], self._imageSize;
+                    PutText( self._imageRGB, str(id), (int(x*width), int(y*height)), font, CV_RGB(255, 0, 0));
+
+                # update le sc client
+
+                self._client.contours = self._contourStorage.getContours();
+                self._client.setRemove( self._contourStorage.flush() );
 
 
-                for key in contours:
-                    str = "C%d" % key;
-                    PutText( self._imageRGB, str, contours[key][0], font, CV_RGB(255, 0, 0));
-
-                #    print key;
+#                print self._client.remove;
+#                self._client.contours = self._contourStorage.contours;
+                #self._client.remove   = self._contourStorage.flush();
+                #self._client.setChanged();
 
                 self.showImage();
                 self._hasFrame = False;
@@ -201,10 +211,10 @@ class ColorTracker:
                 size = 0;
                 (i, center, radius) = MinEnclosingCircle(contours);
                 if i:
-                    # c = contours;
+                    c = contours;
                     # smoothing by approximation may not be needed.
                     # helps in keeping overlapping stuff separated
-                    c = ApproxPoly( contours, self._memStorage, CV_POLY_APPROX_DP, 6);
+                    # c = ApproxPoly( contours, self._memStorage, CV_POLY_APPROX_DP, 6);
                     size = abs(ContourArea( c ));
 
                 if size == 0 or size / r < self._minContourArea:
@@ -214,7 +224,9 @@ class ColorTracker:
                 rect = BoundingRect( c, 0 );
                 values = self.getHistValues( rect );
 
-                self.contourStorage.add( size, center, values );
+                self._contourStorage.append( size, center, values );
+
+#                self._contourStorage.add( size, center, values );
 
                 # stencil out the contour from the orig hue channel, so we won't detedt bounding contours
                 # @todo grow the contour a little to remove areas that are propably shades
