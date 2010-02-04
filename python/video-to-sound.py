@@ -7,6 +7,7 @@ sys.path.append('./lib');
 
 from cv import *
 from ColorTracker import *
+from SCClient import *;
 
 MOUSE_MOVE  = 0;
 MOUSE_DOWN  = 1;
@@ -45,7 +46,13 @@ if not LIVE_FEED:
 
 
 if __name__=="__main__":
-    main = ColorTracker( LIVE_FEED, MOVIE_PATH )
+    
+   
+    sc = SCClient();
+    
+    handlers = {'onSet': [getattr(sc, "setContours")] , 'onRemove': [getattr(sc, "setRemove")]  } #dictionary with arrays of handlers to be called for events  
+    
+    main = ColorTracker( LIVE_FEED, MOVIE_PATH, (352, 288), handlers )
     #main.run()
 
     try:

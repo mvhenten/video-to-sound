@@ -13,7 +13,6 @@ A color tracker using OpenCV
 """
 from cv import *;
 from ContourStorage import *;
-from SCClient import *;
 
 import time, operator;
 
@@ -43,9 +42,9 @@ class ColorTracker:
     _minContourArea = 0.8;
 
     _contourStorage = None;
-    _client         = None;
-
-    def __init__( self, useLiveFeed = False, moviePath = '', imageSize = (352, 288) ):
+    _handlers = None;
+    
+    def __init__( self, useLiveFeed = False, moviePath = '', imageSize = (352, 288), handlers = {} ):
         # window and trackbar
         NamedWindow( "Preview", 1 );
         CreateTrackbar('Sat', 'Preview', self._satMin,
@@ -79,8 +78,8 @@ class ColorTracker:
         self._memStorage = CreateMemStorage();
 
         self._contourStorage = ContourStorage( self._imageSize );
-        self._client         = SCClient();
-
+    	self._handlers = handlers;    
+	
         if not useLiveFeed:
             # @todo try to set capture properties here. won't really do.
             self._capture = CaptureFromFile( moviePath );
@@ -174,17 +173,16 @@ class ColorTracker:
                 for id, c in self._contourStorage._current.iteritems():
                     (x, y), (width, height) = c[0], self._imageSize;
                     PutText( self._imageRGB, str(id), (int(x*width), int(y*height)), font, CV_RGB(255, 0, 0));
-
-                # update le sc client
-
-                self._client.contours = self._contourStorage.getContours();
-                self._client.setRemove( self._contourStorage.flush() );
-
-
-#                print self._client.remove;
-#                self._client.contours = self._contourStorage.contours;
-                #self._client.remove   = self._contourStorage.flush();
-                #self._client.setChanged();
+   
+                set = self._contourStorage.getContours()
+                removed = self._contourStorage.flush()
+                
+                if "onSet" in self._handlers:
+                    for handler in self._handlers["onSet"]:  #call all handlers that registered for onSet
+        		        handler(set)
+                if "onRemoved" in self._handlers:    
+                    for handler in self._handlers["onRemoved"]: #call all handlers that registered for onRemoved 
+                        handler(removed)
 
                 self.showImage();
                 self._hasFrame = False;
