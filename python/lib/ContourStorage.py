@@ -42,7 +42,7 @@ class ContourStorage(object):
     _flushed  = {}; # hold id's that have been flushed
     _current  = {}; # current colleciton of contours added
     _previous = [];
-    _cid = 0;
+    _cid = 1000;
     _handlers = {};
     
     _size     = (0,0);
