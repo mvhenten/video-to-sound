@@ -79,25 +79,27 @@ class ContourStorage(object):
 
 
     def set( self, found_contours ):
-
-        for previous in self._previous:
-            for current in found_contours: #find the best matching in previous, needs some work
-                if self.compare2(current,previous):
-                    if ('oid' in previous) and ('found' not in previous):
+                                   
+        for previous in self._previous: 
+            previous['found'] = False
+            for current in found_contours: #find the best matching in previous, needs some work   
+                if ('oid' in previous) and (not 'oid' in current):
+                    if self.compare2(current,previous):
                         current['oid'] = previous['oid'] #inherit id
-                        previous['found'] = 1
+                        previous['found'] = True
                         self.callHandler("onChanged",current)
-
-        for current in found_contours:  #check if contours were assigned an existing id
-            if not "oid" in current:
+                        break #assign only once
+            
+            if (not previous['found']):
+            	print "************ lost ", previous['oid']
+                self.callHandler("onLost",previous)        
+            
+        for current in found_contours:  #check if contours were assigned an existing id 
+            if not ('oid' in current):
                 current['oid'] = self._cid
-                self.callHandler("onNew",current)
-                self._cid += 1
-
-        for previous in self._previous: #check if contours could not be found anymore
-            if not "found" in previous:
-                self.callHandler("onLost",previous)
-
+                self.callHandler("onNew",current) 
+                self._cid += 1 
+                  
         self._previous = found_contours[:] #copy
 
 
