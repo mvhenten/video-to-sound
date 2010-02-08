@@ -1,0 +1,45 @@
+{\rtf1\ansi\ansicpg1252\cocoartf949\cocoasubrtf540
+{\fonttbl\f0\fnil\fcharset0 Monaco;}
+{\colortbl;\red255\green255\blue255;\red0\green0\blue191;\red0\green115\blue0;\red191\green0\blue0;
+\red0\green24\blue184;}
+\deftab560
+\pard\pardeftab560\ql\qnatural
+
+\f0\fs18 \cf2 SynthDef\cf0 (\cf3 \\
+\fs20 EnvelopedSine
+\fs18 \cf0 , \{ \cf2 | out, freq = 440, gate = 1,
+\fs20  a=0.1, d=0.1, s=0.5, r=0.5
+\fs18  |\cf0  \
+		\cf2 var\cf0  z, smooth;\
+		smooth = \cf2 LPF\cf0 .kr(freq,2); \cf4 //portamento\cf0 \
+		z = \cf2 EnvGen\cf0 .kr(\cf2 Env\cf0 .adsr, gate) * \cf2 SinOsc\cf0 .ar(smooth, 0, 0.1);\
+		\cf2 Out\cf0 .ar(out, z)\
+	\}).
+\fs20 play
+\fs18 (s);\
+	\
+	\
+\cf2 SynthDef\cf0 (\cf3 \\clar\cf0 , \{ | buf, freq, p_m | \
+		\cf2 var\cf0  amp, input, ab, ba, bell, p_diff, p_in, pitch, sound, noise_gate;\
+		\
+		pitch = 400;//(LFNoise1.ar(0.1) * 1000) + 100;\
+		ba = \cf2 DelayC\cf0 .ar(\cf2 InFeedback\cf0 .ar(2, 1), 100.reciprocal , pitch.reciprocal, 1); \cf4 //air that has returned \cf0 \
+		\
+		//p_m = 0.4;\
+		\
+		\
+		p_diff = p_m - ba;\
+		\
+		p_in = \cf2 Shaper\cf0 .ar(buf,p_diff,p_m);\
+		\
+		\
+		ab = \cf2 DelayC\cf0 .ar(p_in, 100.reciprocal , pitch.reciprocal, 1); \cf4 //air at bell\cf0 \
+		bell = \cf2 LPF\cf0 .ar(ab,1000); \cf4 //bell reflection\cf0 \
+		\
+		\cf2 Out\cf0 .ar(2, bell); \cf4 //feedback\
+		\
+		sound = \cf2 HPF\cf0 .ar(bell,800); \
+		\
+		\cf2 Out\cf0 .ar(0, \cf5 FreeVerb\cf0 .ar(\cf2 sound\cf0 ,0.6,0.2,0.2) ! 2); \cf4 //out\cf0 \
+\
+	\}).writeDefFile;}
