@@ -66,7 +66,7 @@ class SCClient( object ):
         self._scServer.sendMsg(*msg)
 
     def onChanged( self, contour ):
-        print "*** changed", contour["oid"]
+        # print "*** changed", contour["oid"]
         if not self._scServer:
             return
 
@@ -78,7 +78,7 @@ class SCClient( object ):
     def onLost( self, contour ):
         cid = contour["oid"]
 
-        print "*** lost", cid
+        # print "*** lost", cid
         self._lost.append(cid)
         if not self._scServer:
             return

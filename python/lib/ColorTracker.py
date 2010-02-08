@@ -33,10 +33,12 @@ class ColorTracker:
     _imgContours   = None;
     _capture    = None;
     _histRanges = None;
-    _maxRanges  = 7; # chosen as premature optimzation; look for 7 distinct ranges, group colors
+#    _maxRanges  = 7; # chosen as premature optimzation; look for 7 distinct ranges, group colors
     _histHue    = None;
+    _maxSegments = 6;
+    _histHueBins = 12;
 
-    _histBins   = 21;
+    _histBins   = 80;
     _satMin     = 85; # high threshold for webcam input
     _valMin     = 70; # filter out stuff close to grey
     _blurFact   = 11;
@@ -189,8 +191,6 @@ class ColorTracker:
     def findContours( self ):
         self.findRanges();
 
-        # !@@@todo move me outta here!
-        r = self._imageSize[0] * self._imageSize[1]/100;
         contourStorage = [];
 
         for start, end in self._histRanges:
@@ -203,65 +203,47 @@ class ColorTracker:
                 mode=CV_RETR_EXTERNAL, method=CV_CHAIN_APPROX_SIMPLE, offset=(0,0));
 
             self.parseContours( contours, contourStorage );
-
-
-
-
-        self._contourStorage.set(contourStorage)
+        self._contourStorage.set( contourStorage );
 
     """ process contours """
     def parseContours( self, contours, contourStorage ):
         while contours:
-            size = 0;
-            (i, center, radius) = MinEnclosingCircle(contours);
-
-            if i:
-                c = contours;
-                # smoothing by approximation may not be needed.
-                # helps in keeping overlapping stuff separated
-                # c = ApproxPoly( contours, self._memStorage, CV_POLY_APPROX_DP, 6);
-                size = abs(ContourArea( c ));
+            c = contours;
+            size = abs(ContourArea(c));
+            (center, p2, px) = MinAreaRect2( c, self._memStorage );
 
             if size == 0 or (size*100 / self._totalPix) < self._minContourArea:
                 contours = contours.h_next();
                 continue;
 
+            Zero( self._hueMask );
             rect = BoundingRect( c, 0 );
 
             # re-build a mask for histogram
-            Zero( self._hueMask );
             DrawContours( self._hueMask, c, CV_RGB(255,255,255), -1, -1 );
             values = self.getHistValues( self._hueMask, rect );
 
+            # draw contour into the hue channel, removing the detected contour
+            # and a small area around it to prevent surrounding contours.
             DrawContours( self._hue, c, 0, 0, -1, 12 );
             DrawContours( self._hue, c, 0, 0, -1, -1 );
 
-#                self._contourStorage.append( size, center, values );
-            contourStorage.append({"size":size,"x":center[0],"y":center[1],"h":values[0],"s":values[1],"v":values[2]});
-
-
-            # stencil out the contour from the orig hue channel, so we won't detedt bounding contours
-            # @todo grow the contour a little to remove areas that are propably shades
-            # DrawContours( self._hue, c, CV_RGB(0, 0, 0), CV_RGB(0,0,0), -1, -1);
-
-            # print values;
-            # save so we can watch the contours in greyscale
             DrawContours( self._imgContours, c, values, values, -1, 12);
             DrawContours( self._imgContours, c, values, values, -1, -1);
 
-            # draw annoying circle
-            #Circle( self._imageRGB, (int(center[0]), int(center[1])),
-            #    int(radius), RGB(0,255,0), 1, 1);
+            # a blue cross in the middle
+            x, y = center;
+            Line( self._imgContours, (x-10, y), (x+10, y), CV_RGB(0,0,255), 1, 4);
+            Line( self._imgContours, (x, y-10), (x, y+10), CV_RGB(0,0,255), 1, 4);
 
+            contourStorage.append({"size":size,"x":center[0],"y":center[1],"h":values[0],"s":values[1],"v":values[2]});
             contours = contours.h_next();
 
 
     """ retrieve most prominent HSV values for current hsv channels/roi """
     def getHistValues( self, mask, roi ):
-        SetImageROI( self._hue, roi );
-        SetImageROI( self._val, roi );
-        SetImageROI( self._sat, roi );
-        SetImageROI( mask, roi );
+        for img in [self._hue, self._val, self._sat, mask]:
+            SetImageROI( img, roi );
 
         CalcHist([self._hue, self._val, self._sat], self._histHSV, 0, mask );
         (_, _, _, maxBin) = GetMinMaxHistValue( self._histHSV );
@@ -270,13 +252,10 @@ class ColorTracker:
         (h, s, v) = [x + 1 for x in maxBin];
         (hv, sv, vv) = ( 180/self._histBins, 255/25, 255/25);
 
-        ResetImageROI( self._hue );
-        ResetImageROI( self._sat );
-        ResetImageROI( self._val );
-        ResetImageROI( mask );
+        for img in [self._hue, self._val, self._sat, mask]:
+            ResetImageROI( img );
 
-        values = (h*hv, s*sv, v*vv);
-        return values;
+        return (h*hv, s*sv, v*vv);
 
     """ show different stages in processing depending on key presses """
     def showImage( self ):
@@ -297,18 +276,19 @@ class ColorTracker:
 
     """ optimize ranges for segmentation """
     def findRanges( self ):
-        binSize   = float(180)/self._histBins;
+        bins      = self._histHueBins;
+        binSize   = float(180)/bins;
         values    = [];
         self._histRanges = [];
         CalcHist([self._hue], self._histHue, 0, self._mask );
 
-        for i in range( self._histBins ):
+        for i in range( bins ):
             value = GetReal1D( self._histHue.bins, i );
             values.append( (value, float(i)) );
 
         # sort histogram bins in size, slice, and sort by bin-order
         values.sort( reverse = True );
-        values = values[:7];
+        values = values[:self._maxSegments];
         values.sort( key=operator.itemgetter(1) );
 
         for i in range( len( values ) ):
@@ -324,4 +304,6 @@ class ColorTracker:
                 end = self._histBins * binSize;
 
             self._histRanges.append((round(start,2), round(end,2)));
+
+
 #colorTracker
