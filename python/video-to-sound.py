@@ -2,7 +2,7 @@
 """
 @title A color-segmented contour tracker
 """
-import sys, types, thread;
+import sys, types, thread, atexit;
 sys.path.append('./lib');
 
 from cv import *
@@ -50,16 +50,18 @@ if __name__=="__main__":
    
     sc = SCClient();
     
-    handlers = {'onSet': [getattr(sc, "setContours")] , 'onRemove': [getattr(sc, "setRemove")]  } #dictionary with arrays of handlers to be called for events  
+    handlers = {'onNew': [getattr(sc, "onNew")] , 'onChanged': [getattr(sc, "onChanged")],  'onLost': [getattr(sc, "onLost")]  } #dictionary with arrays of handlers to be called for events  
     
     main = ColorTracker( LIVE_FEED, MOVIE_PATH, (352, 288), handlers )
     #main.run()
+    
+    atexit.register(getattr(sc, "atExit"))
 
     try:
         thread.start_new_thread(main.frameGrabber, ())
         thread.start_new_thread(main.contourTracker, ())
     except Exception, errtxt:
-        print errtxt
+        print "exception", errtxt
 
     while True:
         c = WaitKey(10);

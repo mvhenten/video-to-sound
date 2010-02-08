@@ -77,8 +77,8 @@ class ColorTracker:
         self._histHue = CreateHist([self._histBins], CV_HIST_SPARSE, [[0, 180]]);
         self._memStorage = CreateMemStorage();
 
-        self._contourStorage = ContourStorage( self._imageSize );
-    	self._handlers = handlers;    
+        self._contourStorage = ContourStorage( self._imageSize, handlers );
+    	#self._handlers = handlers;    
 	
         if not useLiveFeed:
             # @todo try to set capture properties here. won't really do.
@@ -170,19 +170,15 @@ class ColorTracker:
 
                 font    = InitFont(CV_FONT_HERSHEY_PLAIN, 1, 1, 0, 1, 8);
 
-                for id, c in self._contourStorage._current.iteritems():
-                    (x, y), (width, height) = c[0], self._imageSize;
-                    PutText( self._imageRGB, str(id), (int(x*width), int(y*height)), font, CV_RGB(255, 0, 0));
-   
-                set = self._contourStorage.getContours()
-                removed = self._contourStorage.flush()
+                for contour in self._contourStorage._previous:
+                    (width, height) =  self._imageSize
+                    if 'oid' in contour:
+                        PutText( self._imageRGB, str(contour['oid']), (int(contour['x']), int(contour['y'])), font, CV_RGB(255, 0, 0));
+                     
+                #set = self._contourStorage.getContours()
+                #removed = self._contourStorage.flush()
                 
-                if "onSet" in self._handlers:
-                    for handler in self._handlers["onSet"]:  #call all handlers that registered for onSet
-        		        handler(set)
-                if "onRemoved" in self._handlers:    
-                    for handler in self._handlers["onRemoved"]: #call all handlers that registered for onRemoved 
-                        handler(removed)
+               
 
                 self.showImage();
                 self._hasFrame = False;
@@ -190,6 +186,8 @@ class ColorTracker:
     def findContours( self ):
         self.findRanges();
         r = self._imageSize[0] * self._imageSize[1]/100;
+        
+        valid_contours = []
 
         for start, end in self._histRanges:
         #for i in range( 0, 180, 30 ):# fixed values?
@@ -222,7 +220,9 @@ class ColorTracker:
                 rect = BoundingRect( c, 0 );
                 values = self.getHistValues( rect );
 
-                self._contourStorage.append( size, center, values );
+#                self._contourStorage.append( size, center, values );
+                valid_contours.append({"size":size,"x":center[0],"y":center[1],"h":values[0],"s":values[1],"v":values[2]})
+
 
 #                self._contourStorage.add( size, center, values );
 
@@ -238,6 +238,10 @@ class ColorTracker:
                     int(radius), RGB(0,255,0), 1, 1);
 
                 contours = contours.h_next();
+        
+        self._contourStorage.set(valid_contours)
+        
+        
 
     """ retrieve most prominent HSV values for current hsv channels/roi """
     def getHistValues( self, roi = None ):
