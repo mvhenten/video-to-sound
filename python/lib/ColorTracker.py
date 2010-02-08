@@ -26,6 +26,7 @@ class ColorTracker:
     _rawFrame   = None;
 
     _imageSize  = ( 352, 288 );
+    _totalPix   = 0;
     _imageRGB   = None;
     _imageHSV   = None;
     _copyHSV    = None;
@@ -43,7 +44,7 @@ class ColorTracker:
 
     _contourStorage = None;
     _handlers = None;
-    
+
     def __init__( self, useLiveFeed = False, moviePath = '', imageSize = (352, 288), handlers = {} ):
         # window and trackbar
         NamedWindow( "Preview", 1 );
@@ -60,6 +61,7 @@ class ColorTracker:
         SetMouseCallback( "Preview", self.onMouse );
 
         self._imageSize = imageSize;
+        self._totalPix  = imageSize[0] * imageSize[1];
 
         self._imageHSV = CreateImage( self._imageSize, 8, 3 );
         self._imageRGB = CreateImage( self._imageSize, 8, 3 );
@@ -78,8 +80,8 @@ class ColorTracker:
         self._memStorage = CreateMemStorage();
 
         self._contourStorage = ContourStorage( self._imageSize, handlers );
-    	#self._handlers = handlers;    
-	
+    	#self._handlers = handlers;
+
         if not useLiveFeed:
             # @todo try to set capture properties here. won't really do.
             self._capture = CaptureFromFile( moviePath );
@@ -149,7 +151,8 @@ class ColorTracker:
             else:
                 t = time.time();
                 Zero( self._imageTmp );
-                Set( self._imgContours, [0, 0, 255] );
+                Zero( self._imgContours );
+#                Set( self._imgContours, [0, 0, 255] );
 
                 blur = max(1, self._blurFact ); # cannot be 0
                 Smooth( self._imageHSV, self._imageHSV, CV_BLUR, blur, blur);
@@ -174,25 +177,23 @@ class ColorTracker:
                     (width, height) =  self._imageSize
                     if 'oid' in contour:
                         PutText( self._imageRGB, str(contour['oid']), (int(contour['x']), int(contour['y'])), font, CV_RGB(255, 0, 0));
-                     
+
                 #set = self._contourStorage.getContours()
                 #removed = self._contourStorage.flush()
-                
-               
+
+
 
                 self.showImage();
                 self._hasFrame = False;
 
     def findContours( self ):
         self.findRanges();
+
+        # !@@@todo move me outta here!
         r = self._imageSize[0] * self._imageSize[1]/100;
-        
-        valid_contours = []
+        contourStorage = [];
 
         for start, end in self._histRanges:
-        #for i in range( 0, 180, 30 ):# fixed values?
-            #start = i;
-            #end   = i+33;
             InRangeS( self._hue, max(start,1), end, self._hueMask );
 
             if CountNonZero( self._hueMask ) < 100:
@@ -201,76 +202,89 @@ class ColorTracker:
             contours = FindContours( self._hueMask, self._memStorage,
                 mode=CV_RETR_EXTERNAL, method=CV_CHAIN_APPROX_SIMPLE, offset=(0,0));
 
-            n = (255/180) * start; # greyscale RGB value
+            self.parseContours( contours, contourStorage );
 
-            while contours:
-                size = 0;
-                (i, center, radius) = MinEnclosingCircle(contours);
-                if i:
-                    c = contours;
-                    # smoothing by approximation may not be needed.
-                    # helps in keeping overlapping stuff separated
-                    # c = ApproxPoly( contours, self._memStorage, CV_POLY_APPROX_DP, 6);
-                    size = abs(ContourArea( c ));
 
-                if size == 0 or size / r < self._minContourArea:
-                    contours = contours.h_next();
-                    continue;
 
-                rect = BoundingRect( c, 0 );
-                values = self.getHistValues( rect );
+
+        self._contourStorage.set(contourStorage)
+
+    """ process contours """
+    def parseContours( self, contours, contourStorage ):
+        while contours:
+            size = 0;
+            (i, center, radius) = MinEnclosingCircle(contours);
+
+            if i:
+                c = contours;
+                # smoothing by approximation may not be needed.
+                # helps in keeping overlapping stuff separated
+                # c = ApproxPoly( contours, self._memStorage, CV_POLY_APPROX_DP, 6);
+                size = abs(ContourArea( c ));
+
+            if size == 0 or (size*100 / self._totalPix) < self._minContourArea:
+                contours = contours.h_next();
+                continue;
+
+            rect = BoundingRect( c, 0 );
+
+            # re-build a mask for histogram
+            Zero( self._hueMask );
+            DrawContours( self._hueMask, c, CV_RGB(255,255,255), -1, -1 );
+            values = self.getHistValues( self._hueMask, rect );
+
+            DrawContours( self._hue, c, 0, 0, -1, 12 );
+            DrawContours( self._hue, c, 0, 0, -1, -1 );
 
 #                self._contourStorage.append( size, center, values );
-                valid_contours.append({"size":size,"x":center[0],"y":center[1],"h":values[0],"s":values[1],"v":values[2]})
+            contourStorage.append({"size":size,"x":center[0],"y":center[1],"h":values[0],"s":values[1],"v":values[2]});
 
 
-#                self._contourStorage.add( size, center, values );
+            # stencil out the contour from the orig hue channel, so we won't detedt bounding contours
+            # @todo grow the contour a little to remove areas that are propably shades
+            # DrawContours( self._hue, c, CV_RGB(0, 0, 0), CV_RGB(0,0,0), -1, -1);
 
-                # stencil out the contour from the orig hue channel, so we won't detedt bounding contours
-                # @todo grow the contour a little to remove areas that are propably shades
-                DrawContours( self._hue, c, CV_RGB(0, 0, 0), CV_RGB(0,0,0), -1, -1);
+            # print values;
+            # save so we can watch the contours in greyscale
+            DrawContours( self._imgContours, c, values, values, -1, 12);
+            DrawContours( self._imgContours, c, values, values, -1, -1);
 
-                # save so we can watch the contours in greyscale
-                DrawContours( self._imgContours, c, CV_RGB(n, n, n), CV_RGB(0,0,0), -1, -1);
+            # draw annoying circle
+            #Circle( self._imageRGB, (int(center[0]), int(center[1])),
+            #    int(radius), RGB(0,255,0), 1, 1);
 
-                # draw annoying circle
-                Circle( self._imageRGB, (int(center[0]), int(center[1])),
-                    int(radius), RGB(0,255,0), 1, 1);
+            contours = contours.h_next();
 
-                contours = contours.h_next();
-        
-        self._contourStorage.set(valid_contours)
-        
-        
 
     """ retrieve most prominent HSV values for current hsv channels/roi """
-    def getHistValues( self, roi = None ):
-        if roi:
-            SetImageROI( self._hue, roi );
-            SetImageROI( self._val, roi );
-            SetImageROI( self._sat, roi );
+    def getHistValues( self, mask, roi ):
+        SetImageROI( self._hue, roi );
+        SetImageROI( self._val, roi );
+        SetImageROI( self._sat, roi );
+        SetImageROI( mask, roi );
 
-        CalcHist([self._hue, self._sat, self._val], self._histHSV, 0 );
+        CalcHist([self._hue, self._val, self._sat], self._histHSV, 0, mask );
         (_, _, _, maxBin) = GetMinMaxHistValue( self._histHSV );
 
         # raise offset and multiply bins to best HSV values
         (h, s, v) = [x + 1 for x in maxBin];
         (hv, sv, vv) = ( 180/self._histBins, 255/25, 255/25);
 
+        ResetImageROI( self._hue );
+        ResetImageROI( self._sat );
+        ResetImageROI( self._val );
+        ResetImageROI( mask );
+
         values = (h*hv, s*sv, v*vv);
-
-        if roi:
-            ResetImageROI( self._hue );
-            ResetImageROI( self._sat );
-            ResetImageROI( self._val );
-
         return values;
 
     """ show different stages in processing depending on key presses """
     def showImage( self ):
         if self._mode == 104 or self._mode == 1048680:#h
             ShowImage( "Preview", self._hue );
+            print "hue";
         elif self._mode == 99 or self._mode == 1048675:#c
+            CvtColor( self._imgContours, self._imgContours, CV_HSV2BGR );
             ShowImage( "Preview", self._imgContours );
         elif self._mode == 109 or self._mode == 1048685:#m
             ShowImage( "Preview", self._mask );
