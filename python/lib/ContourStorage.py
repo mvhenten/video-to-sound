@@ -82,12 +82,13 @@ class ContourStorage(object):
         dims, size = self.size, self._totalPix;
 
         norm = {};
-        norm["hue"] = 180/contour["h"]
-        norm["val"] = 255/contour["s"]
-        norm["sat"] = 255/contour["v"]
-        norm["pan"] = (contour['x']/dims[0], contour['y']/dims[1]);
-        norm["amp"] = contour["size"] /size;
         norm["oid"] = contour["oid"];
+        norm["size"] = contour["size"] /size;
+        norm["x"]   = contour["x"]/dims[0];
+        norm["y"]   = contour["y"]/dims[1];
+        norm["hue"] = float(contour["h"])/180.00
+        norm["val"] = float(contour["s"])/255.00
+        norm["sat"] = float(contour["v"])/255.00
 
         return norm;
 
@@ -104,7 +105,6 @@ class ContourStorage(object):
                         break #assign only once
 
             if (not previous['found']):
-                print "************ lost ", previous['oid']
                 self.callHandler("onLost",previous)
 
         for current in found_contours:  #check if contours were assigned an existing id
@@ -191,8 +191,8 @@ class ContourStorage(object):
                 else:
                     id = max(collect.keys()) + 1;
 
-        if id not in self._contours:
-            print "new" , id
+        #if id not in self._contours:
+        #    print "new" , id
 
         self._current[id] = contour;
 

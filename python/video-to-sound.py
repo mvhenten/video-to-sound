@@ -4,10 +4,14 @@
 """
 import sys, types, thread, atexit;
 sys.path.append('./lib');
+USE_REF = True;
 
 from cv import *
 from ColorTracker import *
-from SCClient import *;
+if USE_REF:
+    from SCClientRef import *;
+else:
+    from SCClient import *;
 
 MOUSE_MOVE  = 0;
 MOUSE_DOWN  = 1;
