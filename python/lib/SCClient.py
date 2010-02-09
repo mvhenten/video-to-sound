@@ -61,7 +61,7 @@ class SCClient( object ):
             return
 
 
-        msg = ['/s_new', 'clar', contour["oid"], 0, self._gid, 'buf', 1, 'freq', contour['x'], 'p_m', float(contour['size'])/10000]
+        msg = ['/s_new', 'clar', contour["oid"], 0, self._gid, 'buf', 1, 'freq', contour['pan'][0], 'p_m', contour['amp']]
         #msg = ['/s_new', 'EnvelopedSine', contour["oid"], 0, self._gid, 'freq', contour["x"], 'amp', 0.5, 'a', 0.00, 'd', 0.00, 's', 0.00, 'r', 0.1, 'gate', 1]
         self._scServer.sendMsg(*msg)
 
@@ -70,9 +70,9 @@ class SCClient( object ):
         if not self._scServer:
             return
 
-        msg = ['/n_set', contour["oid"], 'p_m', float(contour['size'])/10000]
+        msg = ['/n_set', contour["oid"], 'p_m', contour['amp']]
         self._scServer.sendMsg(*msg)
-        msg = ['/n_set', contour["oid"], 'freq', contour["x"]]
+        msg = ['/n_set', contour["oid"], 'freq', contour["pan"][0]]
         self._scServer.sendMsg(*msg)
 
     def onLost( self, contour ):

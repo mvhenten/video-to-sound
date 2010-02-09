@@ -34,11 +34,12 @@ class ColorTracker:
     _capture    = None;
     _histRanges = None;
 #    _maxRanges  = 7; # chosen as premature optimzation; look for 7 distinct ranges, group colors
-    _histHue    = None;
-    _maxSegments = 6;
-    _histHueBins = 12;
 
-    _histBins   = 80;
+    _histHue    = None; # hold histogram for hue
+    _maxSegments = 6;   # maximum segments for color segmentation
+    _histHueBins = 12;  # no. of bins in histogram for color segmentation
+
+    _histBins   = 45;   # no. of bins for histogram per hue/contour ( s,v == 25 )
     _satMin     = 85; # high threshold for webcam input
     _valMin     = 70; # filter out stuff close to grey
     _blurFact   = 11;
@@ -78,11 +79,10 @@ class ColorTracker:
         self._val = CreateImage( self._imageSize, IPL_DEPTH_8U, 1 );
 
         self._histHSV = CreateHist([self._histBins, 25,25], CV_HIST_SPARSE, [[0, 180],[0, 255],[0, 255]]);
-        self._histHue = CreateHist([self._histBins], CV_HIST_SPARSE, [[0, 180]]);
+        self._histHue = CreateHist([self._histHueBins], CV_HIST_SPARSE, [[0, 180]]);
         self._memStorage = CreateMemStorage();
 
         self._contourStorage = ContourStorage( self._imageSize, handlers );
-    	#self._handlers = handlers;
 
         if not useLiveFeed:
             # @todo try to set capture properties here. won't really do.
@@ -173,12 +173,14 @@ class ColorTracker:
                 else:
                     print "W: framedrop ", abs(t);
 
-                font    = InitFont(CV_FONT_HERSHEY_PLAIN, 1, 1, 0, 1, 8);
+                font    = InitFont(CV_FONT_HERSHEY_PLAIN, 0.8, 1, 0, 1, 4);
 
                 for contour in self._contourStorage._previous:
                     (width, height) =  self._imageSize
                     if 'oid' in contour:
-                        PutText( self._imageRGB, str(contour['oid']), (int(contour['x']), int(contour['y'])), font, CV_RGB(255, 0, 0));
+                        txt = "%d: %d/%d/%d" % (contour['oid'], contour['h'], contour['s'], contour['v']);
+                        PutText( self._imageRGB, txt, (int(contour['x']), int(contour['y'])), font, CV_RGB(255, 0, 0));
+                        PutText( self._imgContours, txt, (int(contour['x']), int(contour['y'])), font, CV_RGB(255, 255, 255));
 
                 #set = self._contourStorage.getContours()
                 #removed = self._contourStorage.flush()
@@ -217,11 +219,27 @@ class ColorTracker:
                 continue;
 
             Zero( self._hueMask );
-            rect = BoundingRect( c, 0 );
+            roi = BoundingRect( c, 0 );
 
             # re-build a mask for histogram
             DrawContours( self._hueMask, c, CV_RGB(255,255,255), -1, -1 );
-            values = self.getHistValues( self._hueMask, rect );
+
+            images = [self._hue, self._val, self._sat, self._hueMask];
+
+            self.setROI( roi, images )
+
+            CalcHist([self._hue, self._val, self._sat], self._histHSV, 0, self._hueMask );
+            (_, _, _, maxBin) = GetMinMaxHistValue( self._histHSV );
+
+            # raise offset and multiply bins to best HSV values
+            (h, s, v) = [x + 1 for x in maxBin];
+            (hv, sv, vv) = ( 180/self._histBins, 255/25, 255/25);
+            values = (h*hv, s*sv, v*vv);
+
+            self.resetROI( images );
+
+            #
+            #values = self.getHistValues( self._hueMask, rect );
 
             # draw contour into the hue channel, removing the detected contour
             # and a small area around it to prevent surrounding contours.
@@ -239,23 +257,17 @@ class ColorTracker:
             contourStorage.append({"size":size,"x":center[0],"y":center[1],"h":values[0],"s":values[1],"v":values[2]});
             contours = contours.h_next();
 
+    def setROI( self, roi, images ):
+        for img in images:
+            SetImageROI( img, roi );
+
+    def resetROI(self, images ):
+        for img in images:
+            ResetImageROI( img );
 
     """ retrieve most prominent HSV values for current hsv channels/roi """
     def getHistValues( self, mask, roi ):
-        for img in [self._hue, self._val, self._sat, mask]:
-            SetImageROI( img, roi );
-
-        CalcHist([self._hue, self._val, self._sat], self._histHSV, 0, mask );
-        (_, _, _, maxBin) = GetMinMaxHistValue( self._histHSV );
-
-        # raise offset and multiply bins to best HSV values
-        (h, s, v) = [x + 1 for x in maxBin];
-        (hv, sv, vv) = ( 180/self._histBins, 255/25, 255/25);
-
-        for img in [self._hue, self._val, self._sat, mask]:
-            ResetImageROI( img );
-
-        return (h*hv, s*sv, v*vv);
+        print "hello world";
 
     """ show different stages in processing depending on key presses """
     def showImage( self ):

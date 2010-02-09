@@ -51,7 +51,6 @@ if __name__=="__main__":
     sc = SCClient();
 
     handlers = {'onNew': [getattr(sc, "onNew")] , 'onChanged': [getattr(sc, "onChanged")],  'onLost': [getattr(sc, "onLost")]  } #dictionary with arrays of handlers to be called for events
-    handlers = {};
     main = ColorTracker( LIVE_FEED, MOVIE_PATH, (352, 288), handlers )
     #main.run()
 

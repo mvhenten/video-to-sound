@@ -73,33 +73,46 @@ class ContourStorage(object):
 
     def callHandler(self,label,contour):
         if label in self._handlers:
+            contour = self.normalize( contour );
             for handler in self._handlers[label]:  #call all handlers that registered for onSet
                 handler(contour)
 
 
+    def normalize(self, contour ):
+        dims, size = self.size, self._totalPix;
+
+        norm = {};
+        norm["hue"] = 180/contour["h"]
+        norm["val"] = 255/contour["s"]
+        norm["sat"] = 255/contour["v"]
+        norm["pan"] = (contour['x']/dims[0], contour['y']/dims[1]);
+        norm["amp"] = contour["size"] /size;
+        norm["oid"] = contour["oid"];
+
+        return norm;
 
     def set( self, found_contours ):
-                                   
-        for previous in self._previous: 
+
+        for previous in self._previous:
             previous['found'] = False
-            for current in found_contours: #find the best matching in previous, needs some work   
+            for current in found_contours: #find the best matching in previous, needs some work
                 if ('oid' in previous) and (not 'oid' in current):
                     if self.compare2(current,previous):
                         current['oid'] = previous['oid'] #inherit id
                         previous['found'] = True
                         self.callHandler("onChanged",current)
                         break #assign only once
-            
+
             if (not previous['found']):
-            	print "************ lost ", previous['oid']
-                self.callHandler("onLost",previous)        
-            
-        for current in found_contours:  #check if contours were assigned an existing id 
+                print "************ lost ", previous['oid']
+                self.callHandler("onLost",previous)
+
+        for current in found_contours:  #check if contours were assigned an existing id
             if not ('oid' in current):
                 current['oid'] = self._cid
-                self.callHandler("onNew",current) 
-                self._cid += 1 
-                  
+                self.callHandler("onNew",current)
+                self._cid += 1
+
         self._previous = found_contours[:] #copy
 
 
