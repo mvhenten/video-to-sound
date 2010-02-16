@@ -48,7 +48,7 @@ class ColorTracker:
     _contourStorage = None;
     _handlers = None;
 
-    def __init__( self, useLiveFeed = False, moviePath = '', imageSize = (352, 288), handlers = {} ):
+    def __init__( self, useLiveFeed = False, source = '', imageSize = (352, 288), handlers = {} ):
         # window and trackbar
         NamedWindow( "Preview", 1 );
         CreateTrackbar('Sat', 'Preview', self._satMin,
@@ -86,9 +86,9 @@ class ColorTracker:
 
         if not useLiveFeed:
             # @todo try to set capture properties here. won't really do.
-            self._capture = CaptureFromFile( moviePath );
+            self._capture = CaptureFromFile( source );
         else:
-            self._capture = CaptureFromCAM(0);
+            self._capture = CaptureFromCAM( source );
 
         print "I: Source width:", GetCaptureProperty(self._capture, CV_CAP_PROP_FRAME_WIDTH);
         print "I: Source height:", GetCaptureProperty(self._capture, CV_CAP_PROP_FRAME_HEIGHT);
@@ -250,7 +250,7 @@ class ColorTracker:
             DrawContours( self._imgContours, c, values, values, -1, -1);
 
             # a blue cross in the middle
-            x, y = center;
+            x, y = int(center[0]), int(center[1]);
             Line( self._imgContours, (x-10, y), (x+10, y), CV_RGB(0,0,255), 1, 4);
             Line( self._imgContours, (x, y-10), (x, y+10), CV_RGB(0,0,255), 1, 4);
 

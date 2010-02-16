@@ -17,8 +17,10 @@ class SCClient( object ):
     _gid = 1;
     _scrunning = [];
 
-    def __init__( self ):
+    def __init__( self, synthName = 'color' ):
         print "I: SCLient says Hello World!";
+
+        self._synthName = synthName;
 
         try:
             sc.start( exedir='/Applications/SuperCollider', verbose=0, spew=0 )
@@ -30,7 +32,7 @@ class SCClient( object ):
 
             #send commands
             self._scServer.sendMsg('/b_alloc',1,512,1); #allocate a buffer in supercollider
-            self._scServer.sendMsg('/d_loadDir', os.path.abspath('../sc')); #load synthdefs, we should wait till sc has said something
+            self._scServer.sendMsg('/d_loadDir', os.path.abspath('../sc')); #load synthdefs we should wait till sc has said something
             self._scServer.sendMsg('/g_new',self._gid,0,0)
 
 
@@ -58,7 +60,7 @@ class SCClient( object ):
             return;
 
         id, amp, pan, hue, sat, val = contour["oid"], contour["size"], contour["x"], contour["hue"], contour["sat"], contour["val"];
-        msg = ['/s_new', 'color', id, 0, self._gid, 'hue', hue, 'amp', amp, 'pan', pan, 'sat', sat, 'val', val];
+        msg = ['/s_new', self._synthName, id, 0, self._gid, 'hue', hue, 'amp', amp, 'pan', pan, 'sat', sat, 'val', val];
 
         self._scServer.sendMsg(*msg)
 
