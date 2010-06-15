@@ -40,29 +40,17 @@ class ColorTracker:
     _histHueBins = 12;  # no. of bins in histogram for color segmentation
 
     _histBins   = 45;   # no. of bins for histogram per hue/contour ( s,v == 25 )
-    _satMin     = 85; # high threshold for webcam input
-    _valMin     = 70; # filter out stuff close to grey
-    _blurFact   = 11;
-    _minContourArea = 0.8;
+    
+    _satMin     = 85; # controllable param: high threshold for webcam input
+    _valMin     = 70; # controllable param: filter out stuff close to grey
+    _blurFact   = 11; # controllable param: blur factor
+    _minContourArea = 0.8; # controllable param: minimum size for contour to be valid
 
     _contourStorage = None;
     _handlers = None;
 
+    
     def __init__( self, useLiveFeed = False, source = '', imageSize = (352, 288), handlers = {} ):
-        # window and trackbar
-        NamedWindow( "Preview", 1 );
-        CreateTrackbar('Sat', 'Preview', self._satMin,
-            255, self.setSaturationThreshold );
-        CreateTrackbar('Val', 'Preview', self._valMin,
-            255, self.setValueThreshold );
-        CreateTrackbar('Blur', 'Preview', self._blurFact,
-            255, self.setBlur );
-        CreateTrackbar('Min-size', 'Preview', int(self._minContourArea*10),
-            1000, self.setMinContourArea );
-
-
-        SetMouseCallback( "Preview", self.onMouse );
-
         self._imageSize = imageSize;
         self._totalPix  = imageSize[0] * imageSize[1];
 
@@ -93,10 +81,14 @@ class ColorTracker:
         print "I: Source width:", GetCaptureProperty(self._capture, CV_CAP_PROP_FRAME_WIDTH);
         print "I: Source height:", GetCaptureProperty(self._capture, CV_CAP_PROP_FRAME_HEIGHT);
 
-    def setSaturationThreshold( self, value ):
-        print "I: Set min saturation:", value;
-        self._satMin = value;
+   
+    def setMode(self, mode):
+        self._mode = mode
 
+    def setSaturationThreshold( self, value ):
+                print "I: Set min saturation:", value;
+                self._satMin = value;
+        
     def setValueThreshold( self, value ):
         print "I: Set min value:", value;
         self._valMin = value;
@@ -109,33 +101,33 @@ class ColorTracker:
         value = max( 0.01, float(value)/10 );
         print "I: Min contour area: %.2f%%" % value;
         self._minContourArea = value;
-
+             
+    # def __setattr__(self, name, value):
+    #         print name
+    #     
+            
     """ Grab frames in a separate thread. somehow this speeds things up """
     """ @TODO implement python processes instead """
-    def frameGrabber( self ):
-        print "I: Frame grabber started";
-        while True:
-            if not self._hasFrame:
-                self._rawFrame = QueryFrame( self._capture );
+    def captureImage( self ):
+           
+        self._rawFrame = QueryFrame( self._capture );
 
-                if not self._rawFrame:
-                    # @todo this doesn't always work ( segfault )
-                    SetCaptureProperty( self._capture, CV_CAP_PROP_POS_FRAMES, 1 );
-                    continue;
+        if not self._rawFrame:
+            # @todo this doesn't always work ( segfault )
+            SetCaptureProperty( self._capture, CV_CAP_PROP_POS_FRAMES, 1 );
+            #continue;
 
-                if self._rawFrame.width != self._imageSize[0] or self._rawFrame.height != self._imageSize[1]:
-                    Resize( self._rawFrame, self._imageRGB );
-                else:
-                    #self._imageRGB = Clone( self._rawFrame );#clone segfaults
-                    Copy( self._rawFrame, self._imageRGB );
+        if self._rawFrame.width != self._imageSize[0] or self._rawFrame.height != self._imageSize[1]:
+            Resize( self._rawFrame, self._imageRGB );
+        else:
+            #self._imageRGB = Clone( self._rawFrame );#clone segfaults
+            Copy( self._rawFrame, self._imageRGB );
 
-                CvtColor( self._imageRGB, self._imageHSV, CV_BGR2HSV );
-                # release memory; countour tracker doesn't need it anymore, prevent leaking
-                # cheaper call to alloc in different thread?
-                self._memStorage = CreateMemStorage();
-                self._hasFrame = True; #allow processing when done.
-
-            time.sleep(0.01); # minimal sleep time, prevent CPU hogging
+        CvtColor( self._imageRGB, self._imageHSV, CV_BGR2HSV );
+        # release memory; countour tracker doesn't need it anymore, prevent leaking
+        # cheaper call to alloc in different thread?
+        self._memStorage = CreateMemStorage();
+        #self._hasFrame = True; #allow processing when done.
 
     """ Mouse callback. Show info about clicked pixel """
     def onMouse( self, event, mouseX, mouseY, flags, param ):
@@ -146,49 +138,40 @@ class ColorTracker:
             print "I: HSV: X, Y >> H, S, V:", [mouseX, mouseY], pix;
 
     """ apply pre-processing and houskeeping """
-    def contourTracker( self ):
-        while True:
-            if not self._hasFrame:
-                time.sleep( 0.01 );
-            else:
-                t = time.time();
-                Zero( self._imageTmp );
-                Zero( self._imgContours );
+    def processImage( self ):
+        t = time.time();
+        Zero( self._imageTmp );
+        Zero( self._imgContours );
 #                Set( self._imgContours, [0, 0, 255] );
 
-                blur = max(1, self._blurFact ); # cannot be 0
-                Smooth( self._imageHSV, self._imageHSV, CV_BLUR, blur, blur);
+        blur = max(1, self._blurFact ); # cannot be 0
+        Smooth( self._imageHSV, self._imageHSV, CV_BLUR, blur, blur);
 
-                InRangeS( self._imageHSV, [0, self._satMin, self._valMin], [181, 256, 256], self._mask );
+        InRangeS( self._imageHSV, [0, self._satMin, self._valMin], [181, 256, 256], self._mask );
 
-                # apply the mask over the input HSV to filter out black
-                AddS( self._imageHSV, [1, 1, 1, 1], self._imageTmp, self._mask );
-                Split( self._imageTmp, self._hue, self._val, self._sat, None );
+        # apply the mask over the input HSV to filter out black
+        AddS( self._imageHSV, [1, 1, 1, 1], self._imageTmp, self._mask );
+        Split( self._imageTmp, self._hue, self._val, self._sat, None );
 
-                self.findContours();
+        self.findContours();
 
-                t = 0.04 - (time.time() - t);
-                if t > 0:
-                    time.sleep( t );
-                else:
-                    print "W: framedrop ", abs(t);
+        t = 0.04 - (time.time() - t);
+        if t > 0:
+            time.sleep( t );
+        else:
+            print "W: framedrop ", abs(t);
 
-                font    = InitFont(CV_FONT_HERSHEY_PLAIN, 0.8, 1, 0, 1, 4);
+        font    = InitFont(CV_FONT_HERSHEY_PLAIN, 0.8, 1, 0, 1, 4);
 
-                for contour in self._contourStorage._previous:
-                    (width, height) =  self._imageSize
-                    if 'oid' in contour:
-                        txt = "%d: %d/%d/%d" % (contour['oid'], contour['h'], contour['s'], contour['v']);
-                        PutText( self._imageRGB, txt, (int(contour['x']), int(contour['y'])), font, CV_RGB(255, 0, 0));
-                        PutText( self._imgContours, txt, (int(contour['x']), int(contour['y'])), font, CV_RGB(255, 255, 255));
+        for contour in self._contourStorage._previous:
+            (width, height) =  self._imageSize
+            if 'oid' in contour:
+                txt = "%d: %d/%d/%d" % (contour['oid'], contour['h'], contour['s'], contour['v']);
+                PutText( self._imageRGB, txt, (int(contour['x']), int(contour['y'])), font, CV_RGB(255, 0, 0));
+                PutText( self._imgContours, txt, (int(contour['x']), int(contour['y'])), font, CV_RGB(255, 255, 255));
 
-                #set = self._contourStorage.getContours()
-                #removed = self._contourStorage.flush()
-
-
-
-                self.showImage();
-                self._hasFrame = False;
+        #set = self._contourStorage.getContours()
+        #removed = self._contourStorage.flush()
 
     def findContours( self ):
         self.findRanges();
@@ -270,21 +253,21 @@ class ColorTracker:
         print "hello world";
 
     """ show different stages in processing depending on key presses """
-    def showImage( self ):
+    def getProcessedImage(self): 
+        self.processImage();
         if self._mode == 104 or self._mode == 1048680:#h
-            ShowImage( "Preview", self._hue );
-            print "hue";
+            return self._hue;
         elif self._mode == 99 or self._mode == 1048675:#c
             CvtColor( self._imgContours, self._imgContours, CV_HSV2BGR );
-            ShowImage( "Preview", self._imgContours );
+            return self._imgContours;
         elif self._mode == 109 or self._mode == 1048685:#m
-            ShowImage( "Preview", self._mask );
+            return self._mask;
         elif self._mode == 115:
-            ShowImage( "Preview", self._imageHSV );
+            return self._imageHSV;
         elif self._mode == 114:
-            ShowImage( "Preview", self._rawFrame );
+            return self._rawFrame;
         else:
-            ShowImage( "Preview", self._imageRGB );
+            return self._imageRGB;
 
     """ optimize ranges for segmentation """
     def findRanges( self ):
@@ -316,6 +299,5 @@ class ColorTracker:
                 end = self._histBins * binSize;
 
             self._histRanges.append((round(start,2), round(end,2)));
-
 
 #colorTracker
