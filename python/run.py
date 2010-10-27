@@ -20,7 +20,7 @@ class Main(object):
 
         while True:
             self.run()
-            key = cv.WaitKey(10)
+            key = cv.WaitKey(40)
             if( key % 0x100 == 27 ): break;
         #
         #
@@ -68,18 +68,7 @@ class Main(object):
         cv.CvtColor( dest,dest, cv.CV_BGR2HSV );
 
         cv.InRangeS( dest, [0, 150, 30], [181, 256, 256], mask );
-
-        cv.ShowImage('mask', mask )
-
-
-        cv.ShowImage('hsv1', dest)
-                # apply the mask over the input HSV to filter out black
         cv.AddS( dest, [1, 1, 1, 1], tmp, mask);
-
-
-        cv.ShowImage('hsv', tmp)
-                #Split( self._imageTmp, self._hue, self._val, self._sat, None );
-
         cv.Split( tmp, hue, None, None, None );
 
 
@@ -88,42 +77,38 @@ class Main(object):
 
         bins = np.array([hist.bins[i] for i in range(0,180)])
 
-        print bins[0:10]
+        #print bins[0:10]
 
         (minVal, maxVal, minPos, maxPos ) = cv.GetMinMaxHistValue( hist )
-        print (minVal, maxVal, minPos, maxPos )
+        #print (minVal, maxVal, minPos, maxPos )
 
         idx = []
+
+        # problem here: watershed takes too many cycles.
+        # > 100 cycles becomes problematic
+        # so implement simple hillclimber
 
         for i in range(minVal+100, maxVal, 100):
             n = np.where( bins < minVal + i )[0]
             edge = np.abs([n[i]-n[i-1] for i in range(0, len(n))])
             a = sum(edge)/len(edge)
 
-            print edge
-
-            print "average: %s" %a;
-
-            print "median: %s" % ((max(edge)-min(edge))/2)
-            #print np.avg(edge)
-            #print "avg", float(sum(edge[0]))/len(edge[])
             edge = np.where(np.abs(edge) > a )
-
             l = len(edge[0])
 
             if l > len(idx):
-                print l > 4
                 idx = edge[0]
                 nbins = n[idx]
             if l < len(idx):
                 break
-
             if l > 4:
-                print "l more then 4"
                 break;
 
+            if i > 120:
+                print "lotta thigns her"
 
-        print "Found bins", nbins;
+
+        #print "Found bins", nbins;
 
 
 
