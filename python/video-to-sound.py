@@ -6,6 +6,8 @@ import sys, types, thread, atexit;
 sys.path.append('./lib');
 USE_REF = True;
 
+SCSYNTH_PATH = '/usr/bin';
+
 from cv import *
 from ColorTracker import *
 import glSupport
@@ -66,7 +68,7 @@ if not LIVE_FEED:
 if __name__=="__main__":
 
     #super collider client will start, stop and control synths
-    sc = SCClient( SYNTH_NAME );
+    sc = SCClient( SYNTH_NAME, SCSYNTH_PATH );
 
     #dictionary with arrays of handlers to be called for events of tracked objects
     handlers = {    'onNew': [getattr(sc, "onNew")] , 

@@ -40,17 +40,34 @@ class ColorTracker:
     _histHueBins = 12;  # no. of bins in histogram for color segmentation
 
     _histBins   = 45;   # no. of bins for histogram per hue/contour ( s,v == 25 )
-    
-    _satMin     = 85; # controllable param: high threshold for webcam input
-    _valMin     = 70; # controllable param: filter out stuff close to grey
-    _blurFact   = 11; # controllable param: blur factor
-    _minContourArea = 0.8; # controllable param: minimum size for contour to be valid
+    _satMin     = 40; # high threshold for webcam input
+    _valMin     = 70; # filter out stuff close to grey
+    _blurFact   = 1;
+    _minContourArea = 0.5;
 
     _contourStorage = None;
     _handlers = None;
 
-    
-    def __init__( self, useLiveFeed = False, source = '', imageSize = (352, 288), handlers = {} ):
+    def __init__( self, useLiveFeed = False, moviePath = '', imageSize = (352, 288), handlers = {} ):
+        # window and trackbar
+        NamedWindow( "Preview", 1 );
+        #NamedWindow( "mask", 1 );
+        NamedWindow( "contours", 1 );
+        NamedWindow( "segments", 1 );
+
+
+        CreateTrackbar('Sat', 'Preview', self._satMin,
+            255, self.setSaturationThreshold );
+        CreateTrackbar('Val', 'Preview', self._valMin,
+            255, self.setValueThreshold );
+        CreateTrackbar('Blur', 'Preview', self._blurFact,
+            255, self.setBlur );
+        CreateTrackbar('Min-size', 'Preview', int(self._minContourArea*10),
+            1000, self.setMinContourArea );
+
+
+        SetMouseCallback( "Preview", self.onMouse );
+
         self._imageSize = imageSize;
         self._totalPix  = imageSize[0] * imageSize[1];
 
@@ -66,6 +83,9 @@ class ColorTracker:
         self._sat = CreateImage( self._imageSize, IPL_DEPTH_8U, 1 );
         self._val = CreateImage( self._imageSize, IPL_DEPTH_8U, 1 );
 
+        totSize = ( self._imageSize[0] * 3, self._imageSize[1] * 2)
+        self._segments = CreateImage( totSize, IPL_DEPTH_8U, 3 );
+
         self._histHSV = CreateHist([self._histBins, 25,25], CV_HIST_SPARSE, [[0, 180],[0, 255],[0, 255]]);
         self._histHue = CreateHist([self._histHueBins], CV_HIST_SPARSE, [[0, 180]]);
         self._memStorage = CreateMemStorage();
@@ -74,9 +94,9 @@ class ColorTracker:
 
         if not useLiveFeed:
             # @todo try to set capture properties here. won't really do.
-            self._capture = CaptureFromFile( source );
+            self._capture = CaptureFromFile( moviePath );
         else:
-            self._capture = CaptureFromCAM( source );
+            self._capture = CaptureFromCAM(0);
 
         print "I: Source width:", GetCaptureProperty(self._capture, CV_CAP_PROP_FRAME_WIDTH);
         print "I: Source height:", GetCaptureProperty(self._capture, CV_CAP_PROP_FRAME_HEIGHT);
@@ -163,12 +183,12 @@ class ColorTracker:
 
         font    = InitFont(CV_FONT_HERSHEY_PLAIN, 0.8, 1, 0, 1, 4);
 
-        for contour in self._contourStorage._previous:
-            (width, height) =  self._imageSize
-            if 'oid' in contour:
-                txt = "%d: %d/%d/%d" % (contour['oid'], contour['h'], contour['s'], contour['v']);
-                PutText( self._imageRGB, txt, (int(contour['x']), int(contour['y'])), font, CV_RGB(255, 0, 0));
-                PutText( self._imgContours, txt, (int(contour['x']), int(contour['y'])), font, CV_RGB(255, 255, 255));
+                #for contour in self._contourStorage._previous:
+                #    (width, height) =  self._imageSize
+                #    if 'oid' in contour:
+                #        txt = "%d: %d/%d/%d" % (contour['oid'], contour['h'], contour['s'], contour['v']);
+                #        PutText( self._imageRGB, txt, (int(contour['x']), int(contour['y'])), font, CV_RGB(255, 0, 0));
+                #        PutText( self._imgContours, txt, (int(contour['x']), int(contour['y'])), font, CV_RGB(255, 255, 255));
 
         #set = self._contourStorage.getContours()
         #removed = self._contourStorage.flush()
@@ -177,17 +197,51 @@ class ColorTracker:
         self.findRanges();
 
         contourStorage = [];
+        count = 0;
+
+        Zero( self._segments );
 
         for start, end in self._histRanges:
             InRangeS( self._hue, max(start,1), end, self._hueMask );
 
+            count += 1;
+
+            x = (( count % 3 )) * 352;
+            y = (( count % 2 )) * 288;
+
+
+            Rectangle( self._segments, (x, y), (x+352,y+288), CV_RGB(255,255,255), 1, 8, 0);
+
+
             if CountNonZero( self._hueMask ) < 100:
                 continue;
+
+            #x,y = (1, 1);
+            #width,height = self._imageSize;
+            #roi = (1, 200, 1, 100);
+            #SetImageROI( self._segments, roi );
+            #SetImageROI( self._hueMask, roi );
+            #
+            #print roi;
+            #print self._hueMask.width;
+            #
+            #print self._segments.depth;
+            #print self._hueMask.depth;
+            #
+            #Copy( self._hueMask, self._segments );
+            #
+            #ResetImageROI( self._segments );
+            #ResetImageROI( self._hueMask );
+            #
 
             contours = FindContours( self._hueMask, self._memStorage,
                 mode=CV_RETR_EXTERNAL, method=CV_CHAIN_APPROX_SIMPLE, offset=(0,0));
 
-            self.parseContours( contours, contourStorage );
+            roi =(x, y, x+352, y+288);
+            SetImageROI( self._segments, roi );
+
+            self.parseContours( contours, contourStorage);
+            ResetImageROI( self._segments );
         self._contourStorage.set( contourStorage );
 
     """ process contours """
@@ -226,16 +280,19 @@ class ColorTracker:
 
             # draw contour into the hue channel, removing the detected contour
             # and a small area around it to prevent surrounding contours.
+
             DrawContours( self._hue, c, 0, 0, -1, 12 );
             DrawContours( self._hue, c, 0, 0, -1, -1 );
 
             DrawContours( self._imgContours, c, values, values, -1, 12);
             DrawContours( self._imgContours, c, values, values, -1, -1);
 
+            DrawContours( self._segments, c, (values[0], 255, 255), (values[0], 255, 255), -1, 12);
+            DrawContours( self._segments, c, (values[0], 255, 255), (values[0], 255, 255), -1, -1);
             # a blue cross in the middle
-            x, y = int(center[0]), int(center[1]);
-            Line( self._imgContours, (x-10, y), (x+10, y), CV_RGB(0,0,255), 1, 4);
-            Line( self._imgContours, (x, y-10), (x, y+10), CV_RGB(0,0,255), 1, 4);
+            #x, y = center;
+            #Line( self._imgContours, (int(x-10), int(y)), (int(x+10), int(y)), CV_RGB(0,0,255), 1, 4);
+            #Line( self._imgContours, (int(x), int(y-10)), (int(x), int(y+10)), CV_RGB(0,0,255), 1, 4);
 
             contourStorage.append({"size":size,"x":center[0],"y":center[1],"h":values[0],"s":values[1],"v":values[2]});
             contours = contours.h_next();
@@ -256,7 +313,7 @@ class ColorTracker:
     def getProcessedImage(self): 
         self.processImage();
         if self._mode == 104 or self._mode == 1048680:#h
-            return self._hue;
+            ShowImage( "Preview", self._hue );
         elif self._mode == 99 or self._mode == 1048675:#c
             CvtColor( self._imgContours, self._imgContours, CV_HSV2BGR );
             return self._imgContours;
@@ -266,8 +323,15 @@ class ColorTracker:
             return self._imageHSV;
         elif self._mode == 114:
             return self._rawFrame;
+        elif self._mode == 1048696:
+            #ShowImage( "mask", self._mask );
+            ShowImage( "Preview", self._imageRGB );
+
         else:
-            return self._imageRGB;
+            CvtColor( self._segments, self._segments, CV_HSV2BGR );
+            #ShowImage( "contours", self._imgContours );
+            ShowImage( "Preview", self._imageRGB );
+            ShowImage( "segments", self._segments );
 
     """ optimize ranges for segmentation """
     def findRanges( self ):

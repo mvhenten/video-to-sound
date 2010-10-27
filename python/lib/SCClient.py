@@ -17,11 +17,11 @@ class SCClient( object ):
     _gid = 1;
     _scrunning = [];
 
-    def __init__( self ):
+    def __init__( self, synthName = 'color', scsynthPath = 'Applications/SuperCollider' ):
         print "I: SCLient says Hello World!";
 
         try:
-            sc.start( exedir='/Applications/SuperCollider', verbose=0, spew=0 )
+            sc.start( exedir=scsynthPath, verbose=0, spew=0 )
             self._scServer = sc.server
 
             #register some handler

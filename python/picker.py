@@ -1,5 +1,4 @@
 #!/usr/bin/env python
-
 import cv
 
 MOUSE_MOVE  = 0;
@@ -35,8 +34,8 @@ class ColorPicker:
     def run( self ):
         while True:
             c = cv.WaitKey(10)
-            if c == 27:
-                break
+            if( key % 0x100 == 27 ):
+                break;
 #//colorPicker
 
 if __name__=="__main__":
