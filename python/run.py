@@ -41,6 +41,19 @@ class Main(object):
 
     def grab( self ):
         return cv.QueryFrame( self.cam );
+        
+    def histEdges(self, bins):
+        """ gets boundaries between "top hats" of the histogram. each index is the start of a top """
+
+        m = np.mean(bins);
+        idx = np.where(bins > m)[0] # indexes ( bin nr. ) bins that have high values
+        dif = np.array([idx[i]-idx[i-1] for i in range(len(idx))]) # difference with previous - gives edges
+        
+        edges = np.where( dif != 1 ) # find start of continous areas
+        idx   = idx[edges] # gives us bin nr. of those areas
+        
+        return idx
+
 
     def onMouse( self, event, mouseX, mouseY, flags, param ):
         if( event == MOUSE_DOWN ):
@@ -55,6 +68,7 @@ class Main(object):
         tmp = cv.CreateImage( size, 8, 3 )
         hue = cv.CreateImage( size, 8, 1 )
         mask = cv.CreateImage( size, 8, 1 )
+        tmp1d = cv.CreateImage( size, 8, 1 )
         width, height = size
 
 
@@ -64,66 +78,54 @@ class Main(object):
         (x, y) = pos[self.index]
 
         cv.Resize( frame, dest );
-
+        
+        cv.ShowImage('orig', dest )
+        cv.Smooth( dest, dest, cv.CV_GAUSSIAN, 9, 9)
         cv.CvtColor( dest,dest, cv.CV_BGR2HSV );
-
-        cv.InRangeS( dest, [0, 150, 30], [181, 256, 256], mask );
+        cv.InRangeS( dest, [0, 100, 10], [181, 256, 256], mask );
         cv.AddS( dest, [1, 1, 1, 1], tmp, mask);
         cv.Split( tmp, hue, None, None, None );
+        cv.Zero(tmp)
 
 
-        hist = cv.CreateHist([180], cv.CV_HIST_SPARSE, [[0, 180]]);
+        hSize = 180
+
+        hist = cv.CreateHist([hSize], cv.CV_HIST_SPARSE, [[0, 180]]);
         cv.CalcHist( [hue], hist );
 
-        bins = np.array([hist.bins[i] for i in range(0,180)])
+        bins = np.array([hist.bins[i] for i in range(hSize)])
+        
+        idx = self.histEdges(bins)
+        
+        totPix = size[0] * size[1]
 
-        #print bins[0:10]
+       
+        for i in range(len(idx)):
+            start = idx[i]
+            end   = 180
+            
+            
+            start = start+1
+            
+            if i+1 < len(idx):
+                end = idx[i+1]-1
+            
+            cv.Zero(tmp1d)
 
-        (minVal, maxVal, minPos, maxPos ) = cv.GetMinMaxHistValue( hist )
-        #print (minVal, maxVal, minPos, maxPos )
+            cv.InRangeS( hue, int(start), int(end), mask );
+            cv.AddS( hue, 1, tmp1d, mask);
+            
+            a = cv.Avg( tmp1d, mask )
+            a = a[0]
+            
+            contours = cv.FindContours( tmp1d, cv.CreateMemStorage(), cv.CV_RETR_CCOMP )
+            cv.DrawContours(tmp, contours, cv.CV_RGB(255,255,a),cv.CV_RGB(255,255,a),1,-1,1)
 
-        idx = []
-
-        # problem here: watershed takes too many cycles.
-        # > 100 cycles becomes problematic
-        # so implement simple hillclimber
-
-        for i in range(minVal+100, maxVal, 100):
-            n = np.where( bins < minVal + i )[0]
-            edge = np.abs([n[i]-n[i-1] for i in range(0, len(n))])
-            a = sum(edge)/len(edge)
-
-            edge = np.where(np.abs(edge) > a )
-            l = len(edge[0])
-
-            if l > len(idx):
-                idx = edge[0]
-                nbins = n[idx]
-            if l < len(idx):
-                break
-            if l > 4:
-                break;
-
-            if i > 120:
-                print "lotta thigns her"
-
-
-        #print "Found bins", nbins;
-
-
-
-
-
-            #CalcHist([self._hue, self._val, self._sat], self._histHSV, 0, self._hueMask );
-
-
-        #cv.Split()
-
-
+        cv.CvtColor( tmp, tmp, cv.CV_HSV2BGR );
+        cv.ShowImage( "tmp", tmp );
+        
         #cv.KMeans2(hue, 7, mask, (cv.CV_TERMCRIT_ITER, 10, 0))
-
         #cv.SetImageROI( self.canvas, (x*width, y*height, width, height))
-
         #cv.Copy( dest, self.canvas )
 
 
