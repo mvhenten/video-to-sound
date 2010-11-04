@@ -5,6 +5,7 @@ import scsynth
 import random
 import os
 import commands
+import math
 
 class SCClient( object ):
     _contours   = {};
@@ -23,7 +24,8 @@ class SCClient( object ):
 
         try:
             
-            server = scsynth.connect(verbose=True,iphost="10.0.135.15")
+            #server = scsynth.connect(verbose=True,iphost="10.0.135.15")
+            server = scsynth.connect(verbose=True)
             self._scServer = server
 
             #register some handler
@@ -70,10 +72,13 @@ class SCClient( object ):
         p = ranges.index(range[0])
 
         oct = [1.0, 9.0/8, 5.0/4, 4.0/3, 3.0/2, 5.0/3, 15.0/8]
-        pitch = oct[p] * 200;
+        pitch = oct[p] * 100;
     
         if amp < 0.1:
+            pitch = pitch * 4
+        elif amp < 0.2:
             pitch = pitch * 2# oct[p] * 400
+        
             
         return pitch;
 
@@ -97,10 +102,11 @@ class SCClient( object ):
         #    pitch = pitch * 2# oct[p] * 400
         
         pitch = self.getPitch( contour )
+        damping = 0.99#0.8 - (y/5)
                 
         #pitch = hue * 100 + 100
-        amp = 0.1 + (amp * 0.8) #minimal amp needed
-        msg = ['/s_new', 'pluckbow', id, 0 , 0, "drive_in", 0, "noise_ratio",amp,"driver_smoothing", 0.995, "damping", 0.95, "refl", 0.999, "pitch_in", pitch, "pan", x ]
+        amp = 0.2 + (amp * 0.8) #minimal amp needed
+        msg = ['/s_new', 'pluckbow', id, 0 , 0, "drive_in", 0, "noise_ratio",amp,"driver_smoothing", 0.996, "damping", damping, "refl", 0.995, "pitch_in", pitch, "pan", x ]
         self._scServer.sendMsg(*msg)
 
     def onChanged( self, contour ):
@@ -110,13 +116,23 @@ class SCClient( object ):
         x,y,amp,hue,id = contour
         
         damping = 0.9 - (y/10)
-        refl = 0.999# - (contour["y"] / 100)
-        amp = 0.1 + (amp * 0.8)
-        #refl = 0.9 + (contour["y"] / 10)
-
+        auto = amp * 0.1
+        amp = 0.2 + (amp * 0.8)
+        refl = 0.98 + (y /50)
+        
+        
         pitch = self.getPitch( contour )
+        drive = math.sqrt(x*x+y*y) * 0.6
+        
+        # dp = drive point
+        dp = y
+        if dp < 0.2:
+            dp = 0.2 #voorkomt te vals worden
+        if dp > 0.8:
+            dp = 0.8
 
-        msg = ['/n_set', id, 'drive_in', x, "damping",damping,"noise_ratio",amp,"pan", x,"refl",refl, 'pitch', pitch] #,"refl",0.9 + amp/10];
+        # dp kan er gewoon uit
+        msg = ['/n_set', id, 'drive_in', drive, "drive_point",dp, "auto",auto,"damping",damping,"noise_ratio",amp,"pan", x,"refl",refl, 'pitch', pitch] #,"refl",0.9 + amp/10];
 
         self._scServer.sendMsg(*msg)
 
