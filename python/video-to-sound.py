@@ -10,8 +10,6 @@ SCSYNTH_PATH = '/usr/bin';
 
 from cv import *
 from ColorTracker import *
-import glSupport
-import hgSupport
 
 if USE_REF:
     from SCClientRef import *;
@@ -27,8 +25,13 @@ SC_PORT     = 5720;
 LIVE_FEED   = False;
 SYNTH_NAME  = 'default';
 
-(HIGHGUI,GLUT) = range(0,2)
-OUTPUT = GLUT
+(HIGHGUI,GLUT) = (0,1);
+OUTPUT = HIGHGUI
+
+#import glSupport
+import hgSupport
+
+
 
 print "Simple HSV color-contour tracker. Press <ESC> to quit";
 
@@ -68,7 +71,7 @@ if not LIVE_FEED:
 if __name__=="__main__":
 
     #super collider client will start, stop and control synths
-    sc = SCClient( SYNTH_NAME, SCSYNTH_PATH );
+    sc = SCClient( SYNTH_NAME );
 
     #dictionary with arrays of handlers to be called for events of tracked objects
     handlers = {    'onNew': [getattr(sc, "onNew")] , 
