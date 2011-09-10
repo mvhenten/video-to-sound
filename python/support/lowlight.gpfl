@@ -1,0 +1,33 @@
+#V4L2/CTRL/0.0.2
+APP{"v4l2-re-store-ctrls example app"}
+# control data
+#Brightness
+ID{0x00980900};CHK{0:255:1:128}=VAL{128}
+#Contrast
+ID{0x00980901};CHK{0:255:1:32}=VAL{32}
+#Saturation
+ID{0x00980902};CHK{0:255:1:34}=VAL{28}
+#White Balance Temperature, Auto
+ID{0x0098090c};CHK{0:1:1:1}=VAL{0}
+#Gain
+ID{0x00980913};CHK{0:255:1:64}=VAL{44}
+#Power Line Frequency
+ID{0x00980918};CHK{0:2:1:2}=VAL{2}
+#White Balance Temperature
+ID{0x0098091a};CHK{2800:6500:1:4000}=VAL{3034}
+#Sharpness
+ID{0x0098091b};CHK{0:255:1:22}=VAL{0}
+#Backlight Compensation
+ID{0x0098091c};CHK{0:1:1:0}=VAL{0}
+#Exposure, Auto
+ID{0x009a0901};CHK{0:3:1:3}=VAL{1}
+#Exposure (Absolute)
+ID{0x009a0902};CHK{3:2047:1:166}=VAL{1280}
+#Exposure, Auto Priority
+ID{0x009a0903};CHK{0:1:1:0}=VAL{0}
+#Pan (Absolute)
+ID{0x009a0908};CHK{-36000:36000:3600:0}=VAL{-36000}
+#Tilt (Absolute)
+ID{0x009a0909};CHK{-36000:36000:3600:0}=VAL{-36000}
+#Zoom, Absolute
+ID{0x009a090d};CHK{1:5:1:1}=VAL{1}
