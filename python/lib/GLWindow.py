@@ -1,4 +1,3 @@
-
 from OpenGL.GL import *
 from OpenGL.GLU import *
 from OpenGL.GLUT import *
@@ -17,9 +16,6 @@ class GLWindow(object):
         newArgv = glutInit(sys.argv)
     
         glutInitDisplayMode( GLUT_DOUBLE | GLUT_RGB )
-
-#        glutInitWindowSize(1600,900)
-#        glutInitWindowPosition(100, 100)
         
         self._window = glutCreateWindow("hello")
     
@@ -27,17 +23,6 @@ class GLWindow(object):
         glutKeyboardFunc( self.keyboard )    
         glutIdleFunc(self.idle )
 
-        #glutReshapeFunc(reshape)
-        #glutMouseFunc(printFunction( 'Mouse' ))
-        #glutEntryFunc(printFunction( 'Entry' ))
-        #glutKeyboardUpFunc( printFunction( 'KeyboardUp' ))
-        #glutMotionFunc( printFunction( 'Motion' ))
-        #glutPassiveMotionFunc( printFunction( 'PassiveMotion' ))
-        #glutVisibilityFunc( printFunction( 'Visibility' ))
-        #glutWindowStatusFunc( printFunction( 'WindowStatus' ))
-        #glutSpecialFunc( printFunction( 'Special' ))
-        #glutSpecialUpFunc( printFunction( 'SpecialUp' ))
-        #glutTimerFunc( 1000, ontimer, 23 )
         glutMainLoop()
         
     def get_image( self ):
@@ -52,7 +37,6 @@ class GLWindow(object):
         screen_w = float(glutGet(GLUT_WINDOW_WIDTH))
         screen_h = float(glutGet(GLUT_WINDOW_HEIGHT))
         
-        #dit is nodig
         glLoadIdentity();
         glOrtho(0.0, screen_w, 0.0, screen_h, -1.0, 1.0)        
         frame = self.get_image()

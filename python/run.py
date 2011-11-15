@@ -8,7 +8,7 @@ import argparse
 sys.path.append('./lib')
 
 import gpfl
-from cv_util import Grabber
+from cv_util import Grabber, Tracker
 from color_segmentation import *
 from GLWindow import *
 
