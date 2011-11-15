@@ -1,6 +1,6 @@
 import cv
 import numpy as np
-from SCClientRef import *
+from sc_client import SCClientRef as SCClient
 
 
 class Grabber(object):
