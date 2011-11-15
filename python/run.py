@@ -8,8 +8,8 @@ import argparse
 sys.path.append('./lib')
 
 import gpfl
-from Grabber import *
-from ColorSegmenter import *
+from cv_util import Grabber
+from color_segmentation import *
 from GLWindow import *
 
 parser = argparse.ArgumentParser(description='run video to sound',)
@@ -29,53 +29,23 @@ ARGS = parser.parse_args()
 
 for (key, value) in vars(ARGS).items():
     print 'I: "%s" is set to "%s"' % (key, value )
-
-
-class Buf(object):
-    _frames = []
-    _length = 25
-    _index  = 0
-    
-    def __init__( self, len=25 ):
-        self._lenght = 25
-    
-    def push_frame( self, cv_image ):
-        idx = self._index % 25
-        
-        if len(self._frames) >= self._length:
-            retval = self._frames[idx]
-            self._frames[idx] = cv_image
-            
-        else:
-            self._frames.append(cv_image)
-            retval = cv_image
-        
-        self._index+=1
-        return retval
     
 
 class Main(object):
     grabber = Grabber( ARGS )
     segment = ColorSegmenter( ARGS )
     
-    #frame_stack = Buf();
-
     def __init__( self, args ):
         gpfl.apply( args.profile, args.device );
         
-    
     def run( self ):
         self.grabber.query();
         
         out = self.segment.segment( self.grabber.frame() );        
         cv.CvtColor( out, out, cv.CV_HSV2BGR );        
         return out;
-    
-    
-
 
 if __name__=="__main__":
-    
     if ARGS.use_opengl:
         GLWindow( Main( ARGS ).run );
     else:
