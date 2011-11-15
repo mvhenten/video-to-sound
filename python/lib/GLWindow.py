@@ -4,10 +4,11 @@ from OpenGL.GLU import *
 from OpenGL.GLUT import *
 import sys
 import time
+import cv
 
 class GLWindow(object):
     _window             = None
-    _full_screen         = True
+    _full_screen         = False
     _set_mode_callback  = None
     _image_callback     = None;
     
@@ -85,6 +86,12 @@ class GLWindow(object):
     
     def idle( self ):
         glutPostRedisplay()
+        
+    def _dump_image( self ):
+        filename = 'vts_dump_%d.jpg' % time.time()
+        cv.SaveImage( filename, self.get_image() )
+        
+        print 'saving "%s" ' % filename
            
     def keyboard( self, key,x,y):        
         if( key == 'q' ):
@@ -92,3 +99,6 @@ class GLWindow(object):
             
         if( key == 'f' ):
             self._full_screen = not self._full_screen
+            
+        if( key == 'i' ):
+            self._dump_image()

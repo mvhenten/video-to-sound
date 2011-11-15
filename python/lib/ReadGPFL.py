@@ -1,28 +1,35 @@
 #!/usr/bin/python
+""" simple utilit to read gpfl files and execute uvcdynctrl """
 from string import *
 import re
 import sys
 import os
 
+def apply( filename, device ):
+    settings = parse(read(filename))
+    
+    for ( name, value ) in settings:
+        set( device, name, value )
+                
+
 def read( filename ):
     fh = open(filename, 'r')
-    
-    lines = fh.readlines()
-    
+    lines = fh.readlines()    
     lines = lines[3:];
     
-    for i in range((len(lines)-1)/2):
-        n = i * 2
-        name  = strip(strip(lines[n], '#'));
-        value,  = re.compile(r'VAL{(\d+)}').findall(lines[n+1])
-        print name, value
-        
-        print "uvcdynctrl -d video1 -s '%s' %s" % (name,value)
-        
-        os.system("uvcdynctrl -d video1 -s '%s' %s " % (name,value));
-
-if __name__=="__main__":
-    _, filename, = sys.argv
-    read(filename);
+    return lines;
     
+def parse( lines ):
+    collect = []
+    for i in range(0, len(lines), 2):
+        name    = strip(strip(lines[i], '#'));
+        value,  = re.compile(r'VAL{(\d+)}').findall(lines[i+1])
+        collect.append((name,value))
+
+    return collect
+
+def set( device, name, value ):
+    cmd = "uvcdynctrl -d video%d -s '%s' %s" % (device,name,value)
+    os.system( cmd )
+    print cmd    
     

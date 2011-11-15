@@ -61,7 +61,7 @@ class ColorSegmenter( object ):
         cv.CvtColor( src,src, cv.CV_BGR2HSV );
         
         #rough thresholding to filter out noisie
-        cv.InRangeS( src, self.config.HSV_THRESHOLD_START, [181, 256, 256], mask );        
+        cv.InRangeS( src, self.config.treshold_hsv, [181, 256, 256], mask );        
         cv.AddS( src, [1, 1, 1, 1], tmp, mask);
         cv.Split( tmp, hue, None, None, None );
         
