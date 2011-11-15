@@ -1,4 +1,3 @@
-import ReadGPFL
 import cv
 
 class Grabber(object):

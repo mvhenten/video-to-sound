@@ -7,7 +7,7 @@ import argparse
 
 sys.path.append('./lib')
 
-
+import gpfl
 from Grabber import *
 from ColorSegmenter import *
 from GLWindow import *
@@ -58,22 +58,17 @@ class Main(object):
     grabber = Grabber( ARGS )
     segment = ColorSegmenter( ARGS )
     
-    frame_stack = Buf();
+    #frame_stack = Buf();
 
     def __init__( self, args ):
-        ReadGPFL.apply( args.profile, args.device );
+        gpfl.apply( args.profile, args.device );
         
     
     def run( self ):
         self.grabber.query();
         
         out = self.segment.segment( self.grabber.frame() );        
-        cv.CvtColor( out, out, cv.CV_HSV2BGR );
-
-
-        #out2 = self.frame_stack.push_frame(out);
-        #cv.ShowImage( 'buf', out2);
-        
+        cv.CvtColor( out, out, cv.CV_HSV2BGR );        
         return out;
     
     
