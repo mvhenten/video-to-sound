@@ -128,21 +128,9 @@ class SCClientRef( object ):
         self._synthName = synthName;
 
         try:
-            
-            #server = scsynth.connect(verbose=True,iphost="10.0.135.15")
             server = scsynth.connect(verbose=True)
             self._scServer = server
-
-            #register some handler
-            #server.register( '/n_go', self.onSynthCreated ) #
-            #server.register( '/done', self.onDone ) #
-
-            #send commands
-            #serversendMsg('/b_alloc',1,512,1); #allocate a buffer in supercollider
-            #server.sendMsg('/d_loadDir', os.path.abspath('../sc')); #load synthdefs, we should wait till sc has said something
             server.sendMsg('/g_new',self._gid,0,0)
-
-
 
         except OSError:
             print "E: could not start Super Collider"
@@ -257,7 +245,5 @@ class SCClientRef( object ):
     def atExit( self ):
         print commands.getoutput('killall scsynth')
         print "we die"
-
-
 
 #SCCLient

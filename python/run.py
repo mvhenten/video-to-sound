@@ -8,9 +8,9 @@ import argparse
 sys.path.append('./lib')
 
 import gpfl
-from cv_util import Grabber, Tracker
+from cv_util import Grabber
 from color_segmentation import *
-from GLWindow import *
+from gl_window import GLWindow
 
 parser = argparse.ArgumentParser(description='run video to sound',)
 
