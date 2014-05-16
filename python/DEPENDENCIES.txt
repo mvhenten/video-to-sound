@@ -1,7 +1,0 @@
-Dependencies:
-
-	* Supercollider/Python package:
-		http://pypi.python.org/pypi/SC/0.2
-
-	* OpenCV Python bindings:
-		http://opencv.willowgarage.com/documentation/python/index.html
