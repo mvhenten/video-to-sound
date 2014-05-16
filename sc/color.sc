@@ -1,48 +1,55 @@
+/**
+    Simple sine-wave ("bell") synth, because more is less.
+    A slight vibrato is added for sustained notes. adsr should take care of
+    a controlled fade in/out.
+
+*/
+
 (
-	SynthDef.new("color", {arg out = 0, hue = 0.5, midinote = 1, sat = 0.5, val = 0.5, amp = 0.2, gate = 1, panning = 0.5;
-		var freq, sound, vol, env, pan, note;
-		
-        // 1 + 50 == a c note?
-		note = midinote + 50;
-		
-        // why is this? rounding errors?
+	SynthDef.new("color", {arg out = 0, amp = 1, gate = 1, note = 13, panning = 0.5;
+        var sin, env, pan, adsr, vibrato, freq;
+
+        // octave -1, midi note 48 is a "c"
+		freq = ( note + 47 ).midicps;	
+
+        // soft virbrato by passing an lfo trough an envelop genrator
+        // vibrato faces in trough Env ( attack time 1 second )
+        vibrato = SinOsc.ar(5, 0, 1) * EnvGen.kr(Env.adsr(2, 0.1, 2, 3, -1));        
+        freq = freq + vibrato;
+
+    	adsr = EnvGen.ar(Env.adsr( 0, 0.1, 1, 2, 0.5, -4), gate, doneAction: 2);        // generate simple sine wave
+        sin = SinOsc.ar( [freq,freq], mul: adsr );
+
+        // This adds reverb.
+        // change 16 to something higher to make it more "wet"
+        32.do({ sin = AllpassC.ar(sin, 0.02, { Rand(0.001,0.04) }.dup, 3)});
+
+        // scale panning to a -1 .. 1 range
 		panning = (panning * 2) - 1;
-		
-		// not exactly sure what val is doing
-		// maye bind it to a y coordinate?
-		// val = MouseX.kr( 40, 3500, \linear ); //linexp( val, 0, 1, 500, 17000);
-		val = linexp( val, 0, 1, 40, 3500 );
-	
-		freq = note.midicps;
-		sound = CombC.ar( BLowPass.ar(WhiteNoise.ar(0.5), val, 0.2), 1/freq,1/freq/2, sat );
-		vol = Amplitude.kr( sound, 10, 10 );
-		env = EnvGen.kr(Env.adsr(0.2, 0.1, 0.9, 0.5,amp), gate, doneAction: 2);
 
-        // pan is multiplied with enveloped
-        // this prevents clicks partially
-		pan = Pan2.ar( sound, panning) * env;
+		// Balance is a stereo mixer, in goes two channels
+		pan = Balance2.ar( sin[0], sin[1], panning, 0.1 );
 
-		Out.ar( out, pan );		
-	}).send(s);//.writeDefFile
+		Out.ar( out, pan * amp );	
+	}).send(s);
 )
+
 
 a = Synth(\color);	
 
-//debugging statments.
-// execute per line
-a.set(\midinote,1);
-a.set(\midinote,2);
-a.set(\midinote,3);
-a.set(\midinote,6);
-a.set(\midinote,8);
+// do re mi
+a.set(\note, 1);
+a.set(\note, 2);
+a.set(\note, 4);
+a.set(\note, 5);
+a.set(\note, 7);
+a.set(\note, 9);
 
-a.set(\hue,0.0);
-a.set(\sat,1);
+// octave higher
+a.set(\note, 13);
+a.set(\note, 13+7);
 
-a.set(\amp,0.0);
-a.set(\amp,0.5);
-a.set(\panning,0.5);
-
-
-a.set(\y,0.5);
-a.set(\gate,0);
+// switch off and fade out
+a.set(\gate, 0);
+// full volume
+a.set(\amp, 1);
