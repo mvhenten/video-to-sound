@@ -38,29 +38,40 @@ class SCClient( object ):
     def getNote( self, contour ):
         x,y,amp,hue,id = contour
 
-        ranges = [(0,10),(10, 20),(20, 40),(40, 90),(90, 120),(120, 160),(160,181)]
-        range = [r for r in ranges if r[0] <= hue and hue <= r[1]]
-        
-        # octave shifting
-        color = ranges.index(range[0])
+        print 'HUE', hue
 
-        # mapping colors to midi notes
-        notes = { 6: 1, 0: 3, 1: 5, 2: 6, 3: 8, 4: 10, 5: 12 }
-        note = notes[color];
-        
-        # These are "sweetspots" established by trial
-        # and error. e.g. when "tiny" shift to a higher octave.
-        # These number may have to be adusted per location
+        # 8 = orange
+        # 25 = yellow
+        # 88 = green
+        # 110 = blue
+        # 133 = blue
+        # 137 = purple blue
+        # 145 - 150 = purple
+        # 174 = red
 
-        amp = math.log(amp*10,10);
+        mapping = [
+            ('orange', 0, 15, 3),
+            ('yellow', 15, 50, 5),
+            ('green', 50, 100, 6),
+            ('blue', 100, 134, 8),
+            ('purple', 134, 160, 10),
+            ('red', 160, 181, 1)
+        ]
+
+        [[color, start, stop, note ]] = [r for r in mapping if r[1] <= hue and hue <= r[2] ]
+
+        # DEBUG
+        # print 'COLOR,NOTE', color, note
+
+        amp = math.log(amp*10,8);
 
         if amp < 0.15:
-            return color + 26;
+            return note + 26;
 
         if amp < 0.70:
-            return color + 13;
+            return note + 13;
 
-        return color;
+        return note;
 
 
     def onNew( self, contour ):
