@@ -38,8 +38,6 @@ class SCClient( object ):
     def getNote( self, contour ):
         x,y,amp,hue,id = contour
 
-        print 'HUE', hue
-
         # 8 = orange
         # 25 = yellow
         # 88 = green
@@ -62,28 +60,33 @@ class SCClient( object ):
 
         # DEBUG
         # print 'COLOR,NOTE', color, note
+        # print 'VAR', hue - start
 
         amp = math.log(amp*10,8);
 
         if amp < 0.15:
-            return note + 26;
+            note = note + 26;
 
         if amp < 0.70:
-            return note + 13;
+            note = note + 13;
 
-        return note;
+        return [note, hue - start ];
 
 
     def onNew( self, contour ):
         x,y,amp,hue,cid = contour
 
-        self.sendMessage( [ '/s_new', self._synthName, cid, 0, 0, 'amp', math.log(amp*10,8), 'panning', x, 'note', self.getNote(contour) ] );
+        note, vib = self.getNote(contour);
+
+        self.sendMessage( [ '/s_new', self._synthName, cid, 0, 0, 'amp', math.log(amp*10,8), 'panning', x, 'note', note, 'vib', vib ] );
 
 
     def onChanged( self, contour ):
         x,y,amp,hue,cid = contour
 
-        self.sendMessage( [ '/n_set', cid, 'amp', math.log(amp*10,8), 'panning', x, 'note', self.getNote(contour) ] );
+        note, vib = self.getNote(contour);
+
+        self.sendMessage( [ '/n_set', cid, 'amp', math.log(amp*10,8), 'panning', x, 'note', note, 'vib', vib ] );
 
 
     def onLost( self, cid ):
