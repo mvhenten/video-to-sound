@@ -45,7 +45,7 @@ class SCClient( object ):
         color = ranges.index(range[0])
 
         # mapping colors to midi notes
-        notes = { 6: 1, 0: 2, 1: 2, 2: 4, 3: 5, 4: 5, 5: 7 }
+        notes = { 6: 1, 0: 3, 1: 5, 2: 6, 3: 8, 4: 10, 5: 12 }
         note = notes[color];
         
         # These are "sweetspots" established by trial
@@ -54,10 +54,10 @@ class SCClient( object ):
 
         amp = math.log(amp*10,10);
 
-        if amp < 0.25:
+        if amp < 0.15:
             return color + 26;
 
-        if amp < 0.50:
+        if amp < 0.70:
             return color + 13;
 
         return color;
@@ -83,7 +83,7 @@ class SCClient( object ):
             return;
 
         # debug only, output consumes cpu
-        print 'message:', msg
+        # print 'message:', msg
 
         self._scServer.sendMsg(*msg)
 
