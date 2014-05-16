@@ -13,6 +13,8 @@ Webcams don't provide very accurate color information. Therefore, the image as a
 analyzed and the color spectrum per image is spread over buckets. This way we can at least
 reliable name about six color ranges: red, orange, yellow, green, blue, violet.
 
+![Gratuitous image from the visual output of the color tracker](https://raw.githubusercontent.com/mvhenten/video-to-sound/master/vts_dump_1400265146.jpg)
+
 ### Supercollider
 
 Supercollider is a realtime synthesizer environment. I've created one synth, called color.
@@ -72,4 +74,5 @@ Put some colored objects under the camera. Do additional calibration using
     guvcview -d /dev/video1 -o
 
 Be sure to save the result to `default.gpfl`. run.py will read this file to setup the cam.
+
 
